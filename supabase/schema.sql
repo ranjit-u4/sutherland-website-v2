@@ -7,6 +7,11 @@
 --     the most recent update
 --   * `severity` and `impact` are constrained to High / Medium / Low
 --
+-- Records are soft-deleted: the agent delete flow stamps `deleted_at` /
+-- `deleted_by` and the row stays put, so auditors keep seeing it. An external
+-- workflow writes `audit_result` / `audit_reason` through
+-- PATCH /api/entries/[id]/verification.
+--
 -- The app talks to Supabase exclusively from server-side route handlers using
 -- the service_role key, so service_role is the only role that needs table
 -- privileges -- anon stays locked out, meaning the browser never gets direct
@@ -24,12 +29,33 @@ create table if not exists public.entries_v2 (
   cost              numeric,
   customer_category text,
   previous_value    jsonb,
-  created_at        timestamptz default now()
+  created_at        timestamptz default now(),
+  modified_on       timestamptz,
+  deleted_at        timestamptz,
+  deleted_by        text,
+  audit_result      text,
+  audit_reason      text
 );
 
 -- If the table already exists from an earlier run, add what v2 needs.
 alter table public.entries_v2
   add column if not exists previous_value jsonb;
+
+-- Soft delete: set by PATCH /api/entries/[id]; the row is never removed.
+alter table public.entries_v2
+  add column if not exists deleted_at timestamptz;
+alter table public.entries_v2
+  add column if not exists deleted_by text;
+
+-- Stamped by the server on every update and on a soft delete.
+alter table public.entries_v2
+  add column if not exists modified_on timestamptz;
+
+-- The external verification workflow's verdict.
+alter table public.entries_v2
+  add column if not exists audit_result text;
+alter table public.entries_v2
+  add column if not exists audit_reason text;
 
 -- Constrained vocabularies. These mirror SEVERITY_LEVELS, IMPACT_LEVELS and
 -- CUSTOMER_CATEGORIES in lib/fields.js -- change both together.
@@ -52,8 +78,18 @@ alter table public.entries_v2
   add constraint entries_v2_customer_category_check
   check (customer_category in ('Basic', 'Silver', 'Gold', 'Platinum'));
 
--- Privileges. No delete: nothing in v2 removes a record -- agents add and
--- modify, auditors only read.
+-- Mirrors AUDIT_RESULTS in lib/fields.js. The verification route validates the
+-- value before it gets here, so this constraint is the backstop, not the
+-- error message the caller sees.
+alter table public.entries_v2
+  drop constraint if exists entries_v2_audit_result_check;
+alter table public.entries_v2
+  add constraint entries_v2_audit_result_check
+  check (audit_result in ('Pass', 'Fail'));
+
+-- Privileges. Still no delete: the agent delete flow is a soft delete, an
+-- update that stamps deleted_at -- so nothing in v2 removes a row. Agents add,
+-- modify and soft-delete; auditors only read.
 grant select, insert, update on table public.entries_v2 to service_role;
 
 -- Grant on the id sequence too, if there is one. This covers both `serial` and

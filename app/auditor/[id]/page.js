@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import { use, useEffect, useState } from "react";
-import {
-  FIELDS,
-  displayValue,
-  formatDate,
-  formatPreviousValue,
-} from "@/lib/fields";
+import Notice from "@/app/components/Notice";
+import PageHeader from "@/app/components/PageHeader";
+import RecordDetail from "@/app/components/RecordDetail";
+import { DetailSkeleton } from "@/app/components/Skeleton";
+import StatusBadges from "@/app/components/StatusBadges";
+import { formatDate } from "@/lib/fields";
+
+const CRUMBS = [{ label: "Auditor", href: "/auditor" }];
 
 /**
  * Read-only record view. Auditors review records in v2 — there is deliberately
@@ -53,7 +55,14 @@ export default function AuditorRecordPage({ params }) {
   if (state === "loading") {
     return (
       <main className="container narrow">
-        <p className="muted">Loading&hellip;</p>
+        <PageHeader
+          breadcrumbs={[...CRUMBS, { label: `#${id}` }]}
+          eyebrow="Review"
+          title={`Record #${id}`}
+        />
+        <section className="panel">
+          <DetailSkeleton />
+        </section>
       </main>
     );
   }
@@ -61,8 +70,14 @@ export default function AuditorRecordPage({ params }) {
   if (state === "error") {
     return (
       <main className="container narrow">
-        <h1>Record</h1>
-        <div className="notice error">{error}</div>
+        <PageHeader
+          breadcrumbs={[...CRUMBS, { label: `#${id}` }]}
+          eyebrow="Review"
+          title="Record"
+        />
+        <Notice tone="error" title="Could not load this record">
+          <p>{error}</p>
+        </Notice>
         <div className="actions">
           <Link href="/auditor" className="button">
             Back to records
@@ -72,43 +87,31 @@ export default function AuditorRecordPage({ params }) {
     );
   }
 
-  const previous = formatPreviousValue(record.previous_value);
-
   return (
     <main className="container narrow">
-      <h1>Record #{record.id ?? id}</h1>
-      <p className="lede">Review only &mdash; records cannot be changed here.</p>
-
-      <dl className="record-view">
-        {FIELDS.map((field) => (
-          <div className="record-row" key={field.name}>
-            <dt>{field.label}</dt>
-            <dd>{displayValue(record[field.name])}</dd>
-          </div>
-        ))}
-
-        <div className="record-row">
-          <dt>Date of Submission</dt>
-          <dd>{formatDate(record.created_at)}</dd>
+      <PageHeader
+        breadcrumbs={[...CRUMBS, { label: `#${record.id ?? id}` }]}
+        eyebrow="Review only"
+        title={`Record #${record.id ?? id}`}
+        lede={`Submitted ${formatDate(record.created_at)} by ${
+          record.agent_name || "an unknown agent"
+        }. Records cannot be changed here.`}
+      >
+        {/* Deleted state and audit verdict, in full. */}
+        <div className="header-badges">
+          <StatusBadges record={record} showReason />
         </div>
+      </PageHeader>
 
-        <div className="record-row">
-          <dt>Previous Value</dt>
-          <dd>
-            {previous ? (
-              <pre className="mono json-block">{previous}</pre>
-            ) : (
-              <span className="muted">null &mdash; no earlier version</span>
-            )}
-          </dd>
-        </div>
-      </dl>
+      <section className="panel">
+        <RecordDetail record={record} showAudit />
+      </section>
 
       <div className="actions">
         <Link href="/auditor" className="button">
           Back to records
         </Link>
-        <Link href="/" className="button">
+        <Link href="/" className="button ghost">
           Back to Home
         </Link>
       </div>

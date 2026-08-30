@@ -1,4 +1,5 @@
-import Link from "next/link";
+import ActionCard from "./components/ActionCard";
+import Icon from "./components/Icon";
 
 export const metadata = {
   title: "Incident Log",
@@ -7,17 +8,33 @@ export const metadata = {
 
 export default function Home() {
   return (
-    <main className="container narrow">
-      <h1>Incident Log</h1>
-      <p className="lede">Choose how you want to use the site.</p>
+    <main className="container">
+      <div className="hero">
+        <p className="eyebrow">
+          <Icon name="activity" size={13} />
+          Incident Log
+        </p>
+        <h1>Record it once. Review it anywhere.</h1>
+        <p className="lede">
+          Agents log customer incidents with severity, impact and cost. Auditors
+          review the full history, including anything since deleted.
+        </p>
 
-      <div className="role-picker">
-        <Link href="/agent" className="button primary large">
-          I&apos;m an Agent
-        </Link>
-        <Link href="/auditor" className="button large">
-          I&apos;m an Auditor
-        </Link>
+        <div className="card-grid hero-grid">
+          <ActionCard
+            href="/agent"
+            icon="agent"
+            title="I'm an Agent"
+            description="Add a record, modify one you submitted, or delete it from the active log."
+            tone="primary"
+          />
+          <ActionCard
+            href="/auditor"
+            icon="auditor"
+            title="I'm an Auditor"
+            description="Read every record and its previous version. Nothing is editable here."
+          />
+        </div>
       </div>
     </main>
   );

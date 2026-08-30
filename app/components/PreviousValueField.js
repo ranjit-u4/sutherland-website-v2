@@ -15,7 +15,7 @@ export default function PreviousValueField({ value }) {
     <div className="field">
       <label htmlFor="field-previous_value">
         Previous Value
-        <span className="muted"> (read-only)</span>
+        <span className="muted">(read-only)</span>
       </label>
       <textarea
         id="field-previous_value"
@@ -24,7 +24,11 @@ export default function PreviousValueField({ value }) {
         value={text}
         readOnly
         placeholder="null — no earlier version of this record"
+        aria-describedby="field-previous_value-hint"
       />
+      <p className="field-hint" id="field-previous_value-hint">
+        Written by the server on each update — one generation of history.
+      </p>
     </div>
   );
 }
